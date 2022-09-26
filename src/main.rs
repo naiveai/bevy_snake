@@ -19,6 +19,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
         .add_startup_system(setup)
         .add_startup_system(spawn_snake)
+        .add_startup_system(spawn_point_total)
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
             SystemSet::new()
@@ -33,7 +34,7 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(0.150))
                 .with_system(snake_movement)
                 .with_system(snake_eating.after(snake_movement))
-                .with_system(snake_growth.after(snake_movement))
+                .with_system(snake_growth.after(snake_movement)),
         )
         .insert_resource(SnakeSegments::default())
         .add_system_set(
@@ -41,6 +42,7 @@ fn main() {
                 .with_run_criteria(FixedTimestep::step(1.0))
                 .with_system(food_spawner),
         )
+        .add_system(point_total)
         .add_event::<GameOverEvent>()
         .add_system(game_over.after(snake_movement))
         .run();
@@ -309,5 +311,29 @@ fn game_over(
         }
 
         spawn_snake(commands, segments);
+    }
+}
+
+#[derive(Component)]
+struct PointText;
+
+fn spawn_point_total(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn_bundle(
+        TextBundle::from_section(
+            "0",
+            TextStyle {
+                font: asset_server.load("press-start.ttf"),
+                color: Color::WHITE,
+                font_size: 50.0
+            },
+        )
+    ).insert(PointText);
+}
+
+fn point_total(segments: Res<SnakeSegments>, mut point_text: Query<&mut Text, With<PointText>>) {
+    let num_eaten = segments.len() - 2;
+
+    for mut text in &mut point_text {
+        text.sections[0].value = num_eaten.to_string();
     }
 }
